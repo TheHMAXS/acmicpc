@@ -32,9 +32,7 @@ const double eps = 1e-9;
 const double pi = acos(-1.0);
 const int inf = 0x0FFFFFFF;
 const int nil = -1;
-const int root = nil + 1;
 
-const int N = 1111111;
+const int N = 111111;
 const int M = 1111;
 int64 mod = 1000000007;
-

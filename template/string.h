@@ -36,40 +36,40 @@ struct matrix {
 };
 struct TRIE
 {
-    typedef int type;
-    int to[N][M];
-    int match[N];
-    int id;
-    int newnode() {
-        match[id] = 0;
-        REP (c, M) to[id][c] = nil;
-        return id++;
-    }
-    void init() { id = root; newnode(); }
-    void insert(type s[], int n) {
-        int i = root;
-        for (int j = 0; j < n; i = to[i][s[j++]])
-            if (to[i][s[j]] == nil) to[i][s[j]] = newnode();
-        match[i] = n;
-    }
-    int fail[N]; int que[N];
-    int go(int i, type c) {
-        while (i != nil && to[i][c] == nil) i = fail[i];
-        return i == nil ? root : to[i][c];
-    }
-    void initac() {
-        int l = 0, r = 0;
-        fail[root] = nil; que[r++] = root;
-        while (l < r) {
-            int i = que[l++];
-            REP (c, M) if (to[i][c] != nil) {
-                int j = to[i][c];
-                fail[j] = go(fail[i], c);
-                match[j] = max(match[j], match[fail[j]]);
-                que[r++] = j;
-            }
-        }
-    }
+	typedef int type;
+	int to[N][M];
+	int match[N];
+	int id;
+	int newnode() {
+		match[id] = 0;
+		REP (c, M) to[id][c] = nil;
+		return id++;
+	}
+	void init() { id = root; newnode(); }
+	void insert(type s[], int n) {
+		int i = root;
+		for (int j = 0; j < n; i = to[i][s[j++]])
+			if (to[i][s[j]] == nil) to[i][s[j]] = newnode();
+		match[i] = n;
+	}
+	int fail[N]; int que[N];
+	int go(int i, type c) {
+		while (i != nil && to[i][c] == nil) i = fail[i];
+		return i == nil ? root : to[i][c];
+	}
+	void initac() {
+		int l = 0, r = 0;
+		fail[root] = nil; que[r++] = root;
+		while (l < r) {
+			int i = que[l++];
+			REP (c, M) if (to[i][c] != nil) {
+				int j = to[i][c];
+				fail[j] = go(fail[i], c);
+				match[j] = max(match[j], match[fail[j]]);
+				que[r++] = j;
+			}
+		}
+	}
 	matrix fail_matrix() {
 		matrix R;
 		FOR (i, root, id) REP (c, M) {
@@ -119,7 +119,7 @@ struct SAM
 	}
 };
 
-//not compelete
+
 struct SA
 {
 	//suffix, rank, height;
@@ -147,8 +147,9 @@ struct SA
 
 			REP (i, n) X[i] = R[i];
 			m = 0; REP (i, n) {
-				if (i == 0 || X[S[i]] != X[S[i - 1]] ||
-						X[S[i] + k] != X[S[i - 1] + k]) C[m++] = i;
+				if (i == 0 ||
+					X[S[i] + 0] != X[S[i - 1] + 0] ||
+					X[S[i] + k] != X[S[i - 1] + k]) C[m++] = i;
 				R[S[i]] = m - 1;
 			}
 			if (m == n) break;
@@ -162,7 +163,7 @@ struct SA
 		}
 	}
 
-	void norm() { n--; REP (i, n) S[i] = S[i + 1], H[i] = H[i + 1], R[i]--; }
+	void norm() { n--; REP (i, n) {S[i] = S[i + 1]; H[i] = H[i + 1]; R[i]--;} }
 };
 
 }

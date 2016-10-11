@@ -4,9 +4,9 @@ using namespace std;
 #define FOR(i, l, r) for (int i = (l), _ = (r); i < _; ++i)
 
 void add(int64& a, int64 b, int64 mod) {
-    a += b;
-    if (a >= mod) a -= mod;
-    if (a < 0)    a += mod;
+	a += b;
+	if (a >= mod) a -= mod;
+	if (a < 0)	a += mod;
 }
 struct vec {
 	static const int n = 2;
@@ -51,26 +51,26 @@ matrix pow(matrix a, int64 b) {
 }
 
 template<class T> T gcd(T a, T b) {
-    for (T r; b != 0; r = a % b, a = b, b = r);
-    return a;
+	for (T r; b != 0; r = a % b, a = b, b = r);
+	return a;
 }
 
 template<class T> T gcd(T a, T b, T &x, T &y) {
-    T xa = 1, xb = 0;
-    T ya = 0, yb = 1;
-    while (b != 0) {
-        x = xa - a / b * xb; xa = xb; xb = x;
-        y = ya - a / b * yb; ya = yb; yb = y;
-        T r = a % b; a = b; b = r;
-    }
-    x = xa; y = ya; return a;
+	T xa = 1, xb = 0;
+	T ya = 0, yb = 1;
+	while (b != 0) {
+		x = xa - a / b * xb; xa = xb; xb = x;
+		y = ya - a / b * yb; ya = yb; yb = y;
+		T r = a % b; a = b; b = r;
+	}
+	x = xa; y = ya; return a;
 }
 
 int64 pow(int64 a, int64 b, int64 mod) {
-    int64 x = 1;
-    for (; b != 0; b >>= 1, a = a * a % mod)
-        if (b & 1) x = x * a % mod;
-    return x;
+	int64 x = 1;
+	for (; b != 0; b >>= 1, a = a * a % mod)
+		if (b & 1) x = x * a % mod;
+	return x;
 }
 int64 sumpow(int64 a, int64 b, int64 mod) {
 	int64 x = 1, sa = 1, sx = 0;
@@ -79,20 +79,20 @@ int64 sumpow(int64 a, int64 b, int64 mod) {
 	return sx;
 }
 int64 rev(int64 a, int64 mod) {
-    int64 x, y; gcd(a, mod, x, y);
-    while (x < 0) x += mod;
-    while (x >= mod) x -= mod;
-    return x;
+	int64 x, y; gcd(a, mod, x, y);
+	while (x < 0) x += mod;
+	while (x >= mod) x -= mod;
+	return x;
 //  return pow(a, mod - 2, mod);
 }
 int64 china(int64 r[], int64 mod[], int n) {
-    int64 x = 0, m = 1;
-    REP (i, n) m *= mod[i];
-    REP (i, n) {
-        int64 mi = m / mod[i];
-        x += r[i] * rev(mi, mod[i]) * mi;
-    }
-    return x % m;
+	int64 x = 0, m = 1;
+	REP (i, n) m *= mod[i];
+	REP (i, n) {
+		int64 mi = m / mod[i];
+		x += r[i] * rev(mi, mod[i]) * mi;
+	}
+	return x % m;
 }
 
 //with chain() can solve any large number!
@@ -129,7 +129,7 @@ void calC(int64 (&C)[n][m], int64 mod) {
 int64 calCN(int64 n, int64 m, int64 mod) {
 	if (m > n) return 0;
 	int64 ret = 0;
-	REP (i, n + 1) {//C(i, m)
+	REP (i, n + 1) { //C(i, m)
 		if (i == m) ret = 1;
 		if (i > m) ret = ret * i % mod * rev(i - m, mod) % mod;
 	}
@@ -147,67 +147,67 @@ int64 calCM(int64 n, int64 m, int64 mod) {
 
 //a ^ b == a ^ (b % eular(c) + eular(c)) (mod c)
 int eular(int n){
-    int ret = 1;
-    for(int i = 2; i * i <= n; i++) {
-        if    (n % i == 0) { n /= i; ret *= i - 1; }
-        while (n % i == 0) { n /= i; ret *= i; }
-    }
-    if (n > 1) ret *= n - 1;
-    return ret;
+	int ret = 1;
+	for(int i = 2; i * i <= n; i++) {
+		if	  (n % i == 0) { n /= i; ret *= i - 1; }
+		while (n % i == 0) { n /= i; ret *= i; }
+	}
+	if (n > 1) ret *= n - 1;
+	return ret;
 }
 
 namespace pcf {
 	#define MAXN 100   // pre-calc max n for phi(m, n)
 	#define MAXM 70010 // pre-calc max m for phi(m, n)
 	#define MAXP 666666 // max primes counter
-	#define MAX 320010    // max prime
+	#define MAX 320010	// max prime
 	#define setbit(ar, i) (((ar[(i) >> 6]) |= (1 << (((i) >> 1) & 31))))
 	#define chkbit(ar, i) (((ar[(i) >> 6]) & (1 << (((i) >> 1) & 31))))
 	#define isprime(x) (( (x) && ((x)&1) && (!chkbit(ar, (x)))) || ((x) == 2))
-    long long dp[MAXN][MAXM];
-    unsigned int ar[(MAX >> 6) + 5] = { 0 };
-    int len = 0, primes[MAXP], counter[MAX];
+	long long dp[MAXN][MAXM];
+	unsigned int ar[(MAX >> 6) + 5] = { 0 };
+	int len = 0, primes[MAXP], counter[MAX];
 
-    void Sieve() {
-        setbit(ar, 0), setbit(ar, 1);
-        for (int i = 3; (i * i) < MAX; i++, i++) {
-            if (!chkbit(ar, i)) {
-                int k = i << 1;
-                for (int j = (i * i); j < MAX; j += k) setbit(ar, j);
-            }
-        }
+	void Sieve() {
+		setbit(ar, 0), setbit(ar, 1);
+		for (int i = 3; (i * i) < MAX; i++, i++) {
+			if (!chkbit(ar, i)) {
+				int k = i << 1;
+				for (int j = (i * i); j < MAX; j += k) setbit(ar, j);
+			}
+		}
 
-        for (int i = 1; i < MAX; i++) {
-            counter[i] = counter[i - 1];
-            if (isprime(i)) primes[len++] = i, counter[i]++;
-        }
-    }
+		for (int i = 1; i < MAX; i++) {
+			counter[i] = counter[i - 1];
+			if (isprime(i)) primes[len++] = i, counter[i]++;
+		}
+	}
 
-    void init() {
-        Sieve();
-        for (int n = 0; n < MAXN; n++) {
-            for (int m = 0; m < MAXM; m++) {
-                if (!n) dp[n][m] = m;
-                else dp[n][m] = dp[n - 1][m] - dp[n - 1][m / primes[n - 1]];
-            }
-        }
-    }
+	void init() {
+		Sieve();
+		for (int n = 0; n < MAXN; n++) {
+			for (int m = 0; m < MAXM; m++) {
+				if (!n) dp[n][m] = m;
+				else dp[n][m] = dp[n - 1][m] - dp[n - 1][m / primes[n - 1]];
+			}
+		}
+	}
 
-    long long phi(long long m, int n) {
-        if (n == 0) return m;
-        if (primes[n - 1] >= m) return 1;
-        if (m < MAXM && n < MAXN) return dp[n][m];
-        return phi(m, n - 1) - phi(m / primes[n - 1], n - 1);
-    }
+	long long phi(long long m, int n) {
+		if (n == 0) return m;
+		if (primes[n - 1] >= m) return 1;
+		if (m < MAXM && n < MAXN) return dp[n][m];
+		return phi(m, n - 1) - phi(m / primes[n - 1], n - 1);
+	}
 
-    long long Lehmer(long long m){
-        if (m < MAX) return counter[m];
-        long long res = 0;
-        int i, a, s, c, y;
-        s = sqrt(0.9 + m), y = c = cbrt(0.9 + m);
-        a = counter[y], res = phi(m, a) + a - 1;
-        for (i = a; primes[i] <= s; i++) res = res - Lehmer(m / primes[i]) + Lehmer(primes[i]) - 1;
-        return res;
-    }
+	long long Lehmer(long long m){
+		if (m < MAX) return counter[m];
+		long long res = 0;
+		int i, a, s, c, y;
+		s = sqrt(0.9 + m), y = c = cbrt(0.9 + m);
+		a = counter[y], res = phi(m, a) + a - 1;
+		for (i = a; primes[i] <= s; i++) res = res - Lehmer(m / primes[i]) + Lehmer(primes[i]) - 1;
+		return res;
+	}
 }
 

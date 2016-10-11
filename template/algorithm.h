@@ -1,3 +1,6 @@
+#include <complex>
+using namespace std;
+typedef complex<double> comp;
 
 #define REP(i, n) for (int i = 0, _= (n); i < _; ++i)
 #define FOR(i, l, r) for (int i = (l), _ = (r); i < _; ++i)
@@ -6,12 +9,12 @@
 //lower_bound(val) in [l, r)
 template<class T, class Int, class U>
 int lower_bound(T f, Int l, Int r, U val) {
-    while (l < r) {
-    	Int m = (l + r) / 2;
-        if (f(m) < val) l = m + 1;
-        else r = m;
-    }
-    return l;
+	while (l < r) {
+		Int m = (l + r) / 2;
+		if (f(m) < val) l = m + 1;
+		else r = m;
+	}
+	return l;
 }
 
 //findl(l, r, val + 1)
@@ -20,68 +23,6 @@ int upper_bound(T f, Int l, Int r, U val) {
 	return lower_bound(f, l, r, ++val);
 }
 
-//整体二分。。。
-const int N = 1 << 20;
-struct tree_array //[1, n]
-{
-	typedef long long type;
-	type S[N + 10], n;
-	void clear(int n) {
-		this->n = n;
-		REP (i, n) S[i] = type();
-	}
-	void add(int i, type a) {
-		for (;i <= n; i += i & (-i)) S[i] += a;
-	}
-	type sum(int i) {
-		type x = type();
-		for (; i > 0; i -= i & (-i)) x += S[i];
-		return x;
-	}
-	type sum(int l, int r) { return sum(r) - sum(l - 1); }
-	type get(int i) { return sum(i) - sum(i - 1); }
-	void set(int i, type a) { add(i, a - get(i)); }
-};
-struct query {
-	int q, r, ans, i;
-	bool operator<(query b)const { return i < b.i; }
-} q[N], ql[N], qr[N];
-int t[N];
-tree_array sum, cnt;
-void solve(int ll, int mm, int rr, int l, int r) {
-	if (l == r) return;
-	FOR (i, ll, mm) {
-		sum.add(t[i], t[i]);
-		cnt.add(t[i], 1);
-	}
-	int nl = 0, nr = 0;
-	FOR (i, l, r) {
-		long long cur = sum.sum(q[i].q, N) - cnt.sum(q[i].q, N) * q[i].q;
-		if (q[i].r <= cur) ql[nl++] = q[i]; else qr[nr++] = q[i];
-	}
-	int m = l + nl;
-	REP (i, nl) q[l + i] = ql[i];
-	REP (i, nr) q[m + i] = qr[i];
-	if (rr - ll <= 1) {
-		FOR (i, l, r) q[i].ans = rr;
-	} else {
-		if (mm < rr) {
-			solve(mm, (mm + rr) / 2, rr, m, r);
-		}
-		FOR (i, ll, mm) {
-			sum.add(t[i], -t[i]);
-			cnt.add(t[i], -1);
-		}
-		if (ll < mm) {
-			solve(ll, (ll + mm) / 2, mm, l, m);
-		}
-	}
-}
-
-
-#include <complex>
-using namespace std;
-typedef complex<double> comp;
 //on 1 -> DFT -1 -> IDFT
 //n must be 2^k, DFT on = 1, IDFT on = -1
 void fft(comp y[4*N], int n, int on) {
@@ -137,16 +78,13 @@ void mul(char s[2*N], char s1[N], char s2[N]) {
 	DWN (i, n) s[n - i - 1] = x[i] + '0'; s[n] = '\0';
 }
 
-//fast than fft and ntt when type is integer
-struct multiply {
+//fast than fft and ntt when type is integer. O(n^log(3/2))
+struct karatsuba {
 	typedef int64 type;
 	type poor[N]; int id;
-	void add(type x[], type y[], int n) {
-		REP (i, n) x[i] += y[i];
-	}
-	void sub(type x[], type y[], int n) {
-		REP (i, n) x[i] -= y[i];
-	}
+	karatsuba(): id(0) {}
+	void add(type x[], type y[], int n) { REP (i, n) x[i] += y[i]; }
+	void sub(type x[], type y[], int n) { REP (i, n) x[i] -= y[i]; }
 	//n must be 2^n
 	void mul(type r[], type x[], type y[], int n) {
 		if (n <= 16) {
@@ -164,6 +102,78 @@ struct multiply {
 			id -= n;
 		}
 	}
-} MUL;
+};
 
-
+struct Dlx
+{
+#define EACH(i, h, D) for (int _ = h, i = D[_]; i != _; i = D[i])
+	int L[N], R[N], U[N], D[N], row[N], col[N], id; //node
+	int p, n, m, size[N];
+	void link(int id, int ll, int rr, int uu, int dd) {
+		R[ll] = id; L[rr] = id; D[uu] = id; U[dd] = id;
+		L[id] = ll; R[id] = rr; U[id] = uu; D[id] = dd;
+	}
+	void init(int n, int m) {
+		this->n = n; this->m = m; p = n + m; id = p + 1;
+		FOR (i, 0, m) { col[i] = i; row[i] = p; size[i] = 0; }
+		FOR (i, m, p) { row[i] = i; col[i] = p; size[i] = 0; }
+		FOR (i, 0, m) { L[i] = i - 1; R[i] = i + 1; U[i] = D[i] = i; }
+		FOR (i, m, p) { U[i] = i - 1; D[i] = i + 1; L[i] = R[i] = i; }
+		col[p] = row[p] = size[p] = p; link(p, m - 1, 0, p - 1, m);
+	}
+	void set(int r, int c) {
+		r += m; row[id] = r; col[id] = c; size[r]++; size[c]++;
+		link(id++, L[r], r, U[c], c);
+	}
+	//repeat cover
+	void remove(int x) {
+		int r = row[x]; D[U[r]] = D[r]; U[D[r]] = U[r];
+		EACH(i, x, D) { R[L[i]] = R[i]; L[R[i]] = L[i]; size[row[i]]--; }
+	}
+	void resume(int x) {
+		int r = row[x]; D[U[r]] = r; U[D[r]] = r;
+		EACH(i, x, U) { R[L[i]] = i; L[R[i]] = i;  size[row[i]]++; }
+	}
+	//exact cover
+	void remove1(int x) {
+		int c = col[x];               R[L[c]] = R[c]; L[R[c]] = L[c];
+		EACH(i, c, D) EACH(j, i, R) { D[U[j]] = D[j]; U[D[j]] = U[j]; size[col[j]]--; }
+	}
+	void resume1(int x) {
+		int c = col[x];               R[L[c]] = c; L[R[c]] = c;
+		EACH(i, c, U) EACH(j, i, L) { D[U[j]] = j; U[D[j]] = j; size[col[j]]++; }
+	}
+	bool vis[N];
+	int A() {
+		int cnt = 0, num = 1, ret = 0;
+		EACH(i, p, R) cnt++;
+		EACH(i, p, D) num = max(num, size[i]);
+		EACH(c, p, R) vis[c] = false;
+		EACH(c, p, R) if (!vis[c]) {
+			ret++; EACH(i, c, D) EACH(j, row[i], R) vis[col[j]] = true;
+		}
+		return max(ret, (cnt + num - 1) / num);
+	}
+	int best[N], nbest;
+	void dfs(int ans[], int& nans) {
+		if (nbest != -1 && !(nans + A() < nbest)) return;
+		if (R[p] == p) {
+			if (nbest == -1 || nans < nbest) {
+				nbest = nans; REP (i, nans) best[i] = ans[i];
+			}
+		} else {
+			int c = R[p]; EACH(i, p, R) if (size[i] < size[c]) c = i;
+			EACH(i, c, D) {
+				EACH(j, row[i], R) remove(j);
+				ans[nans++] = row[i] - m; dfs(ans, nans); --nans;
+				EACH(j, row[i], L) resume(j);
+			}
+		}
+	}
+	int solve(int ans[], int max = -2) { //return max + 1 if impossible
+		nbest = max + 1; int nans = 0; dfs(ans, nans);
+		nans = nbest; REP (i, nans) ans[i] = best[i];
+		return nans;
+	}
+#undef EACH
+} dlx;
