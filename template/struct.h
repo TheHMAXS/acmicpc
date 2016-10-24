@@ -8,8 +8,11 @@ const int nil = -1;
 const int N = 1111111;
 typedef int type;
 
+
 //copy: for functional data structure
 //init: should be call for each test case
+//make: create tree/node
+//lock: lock() to create a functional history version
 
 //split:
 //left = false  (-inf, index) [index, inf)
@@ -23,6 +26,69 @@ typedef int type;
 //parameter t:
 //t is a tree, and may be changed by reference
 //the old tree will be invalid if copy() is not enable
+
+namespace que // no test
+{
+	template<class T> struct queue {
+		T val[N]; int l, r;
+		queue(): l(0), r(0) {}
+		void init() { l = r = 0; }
+		void push(T x) { val[r++] = x; }
+		void pop() { l++; if (l == r) l = r = 0; }
+		bool empty() { return l == r; }
+		T& front() { return val[l]; }
+		T& back() { return val[r - 1]; }
+	};
+	template<class T> struct prim { //or Dijkstra
+		T val[N]; bool has[N], vis[N]; int n, cur;
+		prim(int n) { init(n); }
+		void init(int n) {
+			this->n = n; cur = nil;
+			REP (i, n) has[i] = vis[i] = false;
+		}
+		void push(int i, T x) {
+			if (vis[i]) return;
+			if (!has[i] || x < val[i]) val[i] = x; has[i] = true;
+			if (cur == nil || val[i] < val[cur]) cur = i;
+		}
+		void pop() {
+			vis[cur] = true;
+			has[cur] = false; cur = nil;
+			REP (i, n) if (cur == nil || val[i] < val[cur]) cur = i;
+		}
+		bool empty() { return cur == nil; }
+		const T& top() { return val[cur]; }
+	};
+	template<class T> struct minque {
+		int key[N]; T val[N];
+		int l, r, kl, kr;
+		minque(): l(0), r(0), kl(0), kr(0) {}
+		void init() { l = r = kl = kr = 0; }
+		void push(const T x) {
+			while (l < r && x < val[r - 1]) r--;
+			val[r] = x; key[r++] = kr++;
+		}
+		void pop() { kl++; if (key[l] < kl) l++;  }
+		bool empty() { return l == r; }
+		const T& top() { return val[l]; }
+	};
+	const int M = 10;
+	template<class T> struct bfs {
+		vector<T> que[M]; int dis; int cur;
+		bfs(): dis(0), cur(M - 1) {}
+		void init() { dis = 0; cur = M - 1; REP (i, M) que[i].clear(); }
+		void push(int dis, T x) {
+			que[dis % M].push_back(x);
+			if (dis < cur) cur = dis;
+		}
+		void pop() {
+			que[cur % M].pop_back(); dis = cur;
+			while (cur < dis + M && que[cur % M].empty()) cur++;
+		}
+		bool empty() { return que[cur % M].empty(); }
+		const T& top() { return que[cur % M].back(); }
+	};
+}
 
 struct rmq
 {
@@ -227,34 +293,29 @@ struct segment_tree
 		int sub[2]; add_t add; sum_t sum;
 		node(int len = 0): add(), sum(len) { sub[0] = sub[1] = nil; }
 		void update(add_t a) { add += a; sum += a;}
-	} X[2 * N]; bool lock[2 * N]; int id;
-	segment_tree(): id(0) { memset(lock, 1, sizeof(lock)); }
-
+	} X[2 * N]; int id, nid;
 	int& Ls(int i) { return X[i].sub[0]; }
 	int& Rs(int i) { return X[i].sub[1]; }
-	void init() { id = 0; }
+	void init() { id = nid = 0; }
 	//[0, n)
 	int make(int n) { X[id] = node(n); return id++; }
-	int copy(int i) { return (true || !lock[i]) ? i : (X[id] = X[i], id++); }
-	void up (int i) {
-		X[i].sum = X[Ls(i)].sum + X[Rs(i)].sum;
-		lock[i] = lock[Ls(i)] = lock[Rs(i)] = true;
-	}
+	void lock() { nid = id; } //lock all node be constant
+	void copy(int& i) { if (i < nid) { X[id] = X[i]; i = id++; } }
+	void up  (int  i) { X[i].sum = X[Ls(i)].sum + X[Rs(i)].sum; }
 	void down(int& i) {
-		lock[i = copy(i)] = false;
 		int len = X[i].sum.len, m = len >> 1;
-		if (Ls(i) == nil) lock[Ls(i) = make(m      )] = false;
-		if (Rs(i) == nil) lock[Rs(i) = make(len - m)] = false;
+		if (Ls(i) == nil) Ls(i) = make(m);
+		if (Rs(i) == nil) Rs(i) = make(len - m);
 		if (!X[i].add.empty()){
-			lock[Ls(i) = copy(Ls(i))] = false; X[Ls(i)].update(X[i].add);
-			lock[Rs(i) = copy(Rs(i))] = false; X[Rs(i)].update(X[i].add);
+			copy(Ls(i)); X[Ls(i)].update(X[i].add);
+			copy(Rs(i)); X[Rs(i)].update(X[i].add);
 			X[i].add = add_t();
 		}
 	}
-
 	void set(int& t, type val[]) {
+		copy(t);
 		int len = X[t].sum.len, m = len >> 1;
-		if (X[t].sum.len == 1) X[t = copy(t)].sum = sum_t(1, val[0]);
+		if (X[t].sum.len == 1) X[t].sum = sum_t(1, val[0]);
 		else {
 			down(t);
 			set(Ls(t), val);
@@ -263,9 +324,10 @@ struct segment_tree
 		}
 	}
 	void update(int& t, int l, int r, add_t add) {
+		copy(t);
 		int len = X[t].sum.len, m = len >> 1;
 		if (r <  0 || len - 1 <  l) return;
-		if (l <= 0 && len - 1 <= r) X[t = copy(t)].update(add);
+		if (l <= 0 && len - 1 <= r) X[t].update(add);
 		else {
 			down(t);
 			update(Ls(t), l, r, add);
@@ -274,6 +336,7 @@ struct segment_tree
 		}
 	}
 	sum_t query(int& t, int l, int r) {
+		copy(t);
 		int len = X[t].sum.len, m = len >> 1;
 		if (r <  0 || len - 1 <  l) return sum_t();
 		if (l <= 0 && len - 1 <= r) return X[t].sum;
@@ -299,29 +362,20 @@ struct treap
 			add += a; sum += a; val += a;
 			if (a.rev) swap(sub[0], sub[1]);
 		}
-	};
-	node X1   [N + 1], *X;
-	bool lock1[N + 1], *lock; int id;
-	treap():
-		X(X1 + 1), lock(lock1 + 1), id(0) {
-		memset(lock1, 1, sizeof(lock1));
-	}
+	} X1[N + 1], *X; int id, nid;
 	int& Ls(int i) { return X[i].sub[0]; }
 	int& Rs(int i) { return X[i].sub[1]; }
-
-	void init() { id = 0; X[nil].sum = sum_t(); }
+	void init() { X = X1 + 1; id = nid = 0; X[nil].sum = sum_t(); }
 	int make(type val) { X[id] = node(val); return id++; }
-	int copy(int i)  { return (true || lock[i]) ? i : (X[id] = X[i], id++); }
+	void lock() { nid = id; } //lock all node be constant
+	void copy(int& i)  { if (i < nid) { X[id] = X[i]; i = id++; } }
 	int key(int i) { return  X[Ls(i)].sum.len; }
-	void up(int i) {
-		X[i].sum = X[Ls(i)].sum + X[i].val + X[Rs(i)].sum;
-		lock[i] = lock[Ls(i)] = lock[Rs(i)] = true;
-	}
+	void up(int i) { X[i].sum = X[Ls(i)].sum + X[i].val + X[Rs(i)].sum; }
 	void down(int& i) {
-		lock[i = copy(i)] = false;
+		copy(i);
 		if (!X[i].add.empty()) {
-			if (Ls(i) != nil) { lock[Ls(i) = copy(Ls(i))] = false; X[Ls(i)].update(X[i].add); }
-			if (Rs(i) != nil) { lock[Rs(i) = copy(Rs(i))] = false; X[Rs(i)].update(X[i].add); }
+			if (Ls(i) != nil) { copy(Ls(i)); X[Ls(i)].update(X[i].add); }
+			if (Rs(i) != nil) { copy(Rs(i)); X[Rs(i)].update(X[i].add); }
 			X[i].add = add_t();
 		}
 	}
@@ -340,7 +394,7 @@ struct treap
 		     { down(t1); Rs(t1) = merge(Rs(t1), t2); up(t1); return t1; }
 		else { down(t2); Ls(t2) = merge(t1, Ls(t2)); up(t2); return t2; }
 	}
-	void  update(int& t, add_t add) { X[t = copy(t)].update(add); }
+	void  update(int& t, add_t add) { copy(t); X[t].update(add); }
 	sum_t query(int t) { return X[t].sum; }
 };
 
@@ -462,117 +516,11 @@ struct splay_tree
 		if (r != v) sum[1] = query(t); sum[1].rev();
 		return sum[0] + sum[1];
 	}
+
+	//maintain edge
 	int U[N], V[N];
 	void elink(int u, int v, int e) { link(U[e] = u, e); link(e, V[e] = v); }
 	void ecut (int e) { setroot(e); cut(U[e]); cut(V[e]); }
 } splay;
 
-struct tree
-{
-	typedef int type;
-	int n;
-	int head[N];
-
-	int id;
-	int to[N];
-	int next[N];
-	type cost[N];
-
-	void init(int n) {
-		id = 0;
-		this->n = n;
-		REP (i, n) head[i] = nil;
-	}
-	void add_(int u, int v, type val) {
-		cost[id] = val;
-		to[id] = v;
-		next[id] = head[u];
-		head[u] = id++;
-	}
-	void add(int u, int v, type val) {
-		add_(u, v, val); add_(v, u, val);
-	}
-
-	//lca
-	int deep[N], dpp[N][M];
-	//u = root, p = nil
-	void initlca(int u, int p) {
-		deep[u] = p == nil ? 0 : deep[p] + 1;
-		dpp[u][0] = p;
-		REP (i, M - 1)
-			dpp[u][i + 1] = dpp[u][i] == nil ? nil : dpp[dpp[u][i]][i];
-		for (int e = head[u]; e != nil; e = next[e])
-			if (to[e] != p) initlca(to[e], u);
-	}
-	int lca(int u, int v) { //initlca();
-		if (deep[u] < deep[v]) swap(u, v);
-		int d = deep[u] - deep[v];
-		REP (i, M) if (d & (1 << i)) u = dpp[u][i];
-		if (u != v) {
-			DWN (i, M) if (dpp[u][i] != dpp[v][i])
-				u = dpp[u][i], v = dpp[v][i];
-			u = dpp[u][0]; v = dpp[v][0];
-		}
-		return u;
-	}
-
-	//tree partition into chains
-	int val[N], parent[N], deep[N], size[N], heavy[N];
-	void heavydfs(int u, int p) {
-		parent[u] = p; deep[u] = p == nil ? 0 : deep[p] + 1;
-		size[u] = 1; heavy[u] = nil;
-		EDGE (u, v, e) if (v != p) {
-			val[v] = cost[e];
-			heavydfs(v, u);
-			size[u] += size[v];
-			if (heavy[u] == nil || size[heavy[u]] < size[v])
-				heavy[u] = v;
-		}
-	}
-	int top[N], rank[N], rid;
-	void chaindfs(int t) {
-		for (int u = t; u != nil; u = heavy[u]) {
-			top[u] = t; rank[u] = --rid;
-		}
-		for (int u = t; u != nil; u = heavy[u]) {
-			EDGE (u, v, e) if (v != parent[u] && v != heavy[u]) chaindfs(v);
-		}
-	}
-
-	int val_rank[N];
-	int make_chain(int u = 0) {
-		heavydfs(u, nil); rid = n; chaindfs(u);
-		REP (v, n) val_rank[rank[v]] = val[v];
-		int ret = segment.make(n);
-		segment.set(ret, val_rank);
-		return ret;
-	}
-	//maintain edges in [u, v]
-	void update(int& t, int u, int v, add_t a) {
-		int tu = top[u], tv = top[v];
-		while (tu != tv) {
-			if (deep[tu] < deep[tv]) { swap(u, v); swap(tu, tv); }
-			segment.update(t, rank[u], rank[tu], a);
-			u = parent[tu]; tu = top[u];
-		}
-		if (u != v) {
-			if (deep[u] < deep[v]) { swap(u, v); }
-			segment.update(t, rank[u], rank[heavy[v]], a);
-		}
-	}
-	sum_t query(int& t, int u, int v) {
-		sum_t sum[2]; bool d = false;
-		int tu = top[u], tv = top[v];
-		while (tu != tv) {
-			if (deep[tu] < deep[tv]) { swap(u, v); swap(tu, tv); d = !d; }
-			sum[d] = sum[d] + segment.query(t, rank[u], rank[tu]);
-			u = parent[tu]; tu = top[u];
-		}
-		if (u != v) {
-			if (deep[u] < deep[v]) { swap(u, v); d = !d;  }
-			sum[d] = sum[d] + segment.query(t, rank[u], rank[heavy[v]]);
-		}
-		sum[1].rev(); return sum[0] + sum[1];
-	}
-};
 

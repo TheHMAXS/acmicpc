@@ -127,6 +127,7 @@ struct SA
 
 	//str[n - 1] = 0, 1 < str[i] < m
 	int C[N], X[N];
+	//S: 0 -> n, [1, n] -> [0, n)
 	void init(const type str[N], int n, int m)
 	{
 		this->n = n;
@@ -163,6 +164,7 @@ struct SA
 		}
 	}
 
+	//S: [0 - n) -> [0 - n)
 	void norm() { n--; REP (i, n) {S[i] = S[i + 1]; H[i] = H[i + 1]; R[i]--;} }
 };
 
