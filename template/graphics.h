@@ -1,19 +1,10 @@
-#include <algorithm>
-using namespace std;
-#define REP(i, n) for (int i = 0, _ = (n); i < _; i++)
-#define FOR(i, l, r) for (int i = (l), _ = (r); i < _; ++i)
-#define DWN(i, n) for (int i = (n) - 1; i >= 0; --i)
-#define EDGE(u, v, e) for (int e = head[u], v; e != nil && (v = to[e], true); e = next[e])
-const int nil = -1, N = 1111111;
-typedef double type;
+#include "template.h"
 
+//need eps when using float as cost or cap for spfa and maxflow;
 struct graphics
 {
-	struct state {
-		type dis; int p, u;
-		state(type dis, int p, int u): dis(dis), p(p), u(u) {}
-		friend bool operator<(state a, state b) { return a.dis > b.dis; }
-	};
+	typedef int type;
+	static const type inf = INT_MAX;
 	int n;
 	int head[N];
 
@@ -36,46 +27,37 @@ struct graphics
 	//for indirect graphics
 	//if dfn[u] <= low[v] && u != root u = split point
 	//if dfn[u] < low[v] (u, v) = split edge
-	int belong[N], low[N], dfn[N], tj;
-	void tarjandfs(int u) {
+	int com[N], low[N], dfn[N], tj, nc;
+	void tarjan(int u) {
 		stack[top++] = u;
-		vis[u] = 1; low[u] = dfn[u] = tj++;
+		low[u] = dfn[u] = tj++;
 		EDGE (u, v, e) {
-			if (vis[v] == 0) {
-				tarjandfs(v);
-				low[u] = min(low[u], low[v]);
-			} else if (vis[v] == 1) {
-				low[u] = min(low[u], dfn[v]);
-			}
+			if (dfn[v] == -1) tarjan(v);
+			if (com[v] == -1) low[u] = min(low[u], low[v]);
 		}
-		vis[u] = 2;
-		if (low[u] == dfn[u])
-			do belong[stack[--top]] = u;
-			while (stack[top] != u);
+		if (low[u] == dfn[u]) do {
+			com[stack[--top]] = nc;
+		} while (stack[top] != u);
+		nc += low[u] == dfn[u];
 	}
 	void tarjan() {
-		tj = 0; REP (i, n) vis[i] = 0;
-		REP (i, n) if (vis[i] == 0) tarjandfs(i);
+		tj = nc = 0; REP (i, n) com[i] = dfn[i] = -1;
+		REP (i, n) if (vis[i] == 0) tarjan(i);
 	}
-	void topology(graphics& topo, int mp[], bool rev) { //no test
-		tarjan();
-		REP (i, n) mp[i] = nil;
-		int nT = 0;
-		REP (i, n) {
-			if (mp[belong[i]] == nil)
-				mp[belong[i]] = nT++;
-			mp[i] = mp[belong[i]];
+	void topology(graphics& topo) { //no test
+		tarjan(); topo.init(nc);
+		REP (u, n) EDGE(u, v, e) {
+			topo.add1(com[u], com[v], cost[e]);
 		}
-		topo.init(nT);
-		REP (u, n) EDGE(u, v, e)
-			rev ? topo.add1(v, u, cost[e]) : topo.add1(u, v, cost[e]);
 	}
 
 	bool is2split() {
 		REP (i, n) vis[i] = 0;
-		bool loop = false; bool split2 = true;
+		bool loop = false;
+		bool split2 = true;
 		REP (i, n) if (!vis[i]) {
-			vis[i] = 1; stack[top++] = i;
+			vis[i] = 1;
+			stack[top++] = i;
 			while (top > 0) {
 				int u = stack[--top];
 				EDGE(u, v, e) if (!vis[v]) {
@@ -89,42 +71,7 @@ struct graphics
 		}
 		return split2;
 	}
-	type prim(int s, int prev[]) {
-		type ret = 0; REP (i, n) vis[i] = false;
-		priority_queue<state> que; que.push(state(0, nil, s));
-		while (!que.empty()) {
-			state cur = que.top(); que.pop(); int u = cur.u;
-			if (!vis[u]) {
-				vis[u] = true; ret += cur.dis; prev[u] = cur.p;
-				EDGE (u, v, e) que.push(state(cost[e], u, v));
-			}
-		}
-		return ret;
-	}
-	void dijkstra(int s, type dis[], int prev[]) {
-		REP (i, n) dis[i] = inf;
-		priority_queue<state> que; que.push(state(0, nil, s));
-		while (!que.empty()) {
-			state cur = que.top(); que.pop(); int u = cur.u;
-			if (dis[u] == inf) {
-				dis[u] = cur.dis; prev[u] = cur.p;
-				EDGE (u, v, e) que.push(state(cur.dis + cost[e], u, v));
-			}
-		}
-	}
-	bool spfa(int s, type dis[], int prev[]) {
-		static int cnt[N]; REP (i, n) { cnt[i] = 0; dis[i] = inf; }
-		queue<state> que; que.push(state(0, nil, s));
-		while (!que.empty()) {
-			state cur = que.front(); que.pop(); int u = cur.u;
-			if (dis[u] > cur.dis) {
-				dis[u] = cur.dis; prev[u] = cur.p;
-				cnt[u] = cnt[cur.p] + 1; if (cnt[u] > n) return false;
-				EDGE (u, v, e) que.push(state(cur.dis + cost[e], u, v));
-			}
-		}
-		return true;
-	}
+
 	int toposort(int ans[]) {
 		static int in[N];
 		REP (i, n) in[i] = 0;
@@ -138,110 +85,26 @@ struct graphics
 		return i;
 	}
 
-	int force2sat(int ans[]) {
-		REP (i, n) vis[i] = false; int m = 0;
-		REP (i, n) if (!vis[i] && !vis[i ^ 1]) {
-			int j = m; bool ok = true;
-			stack[top++] = i;
-			while (top > 0) {
-				int u = stack[--top];
-				if (!vis[u]) {
-					if (vis[u ^ 1]) ok = false;
-					vis[u] = true; ans[m++] = u;
-					EDGE(u, v, e) stack[top++] = v;
-				}
-			}
-			if (!ok) while(m > j) vis[ans[--m]] = false;
-		}
-		sort(ans, ans + m);
-		return m;
-	}
+
 	bool has2sat() {
 		tarjan();
-		REP (i, n) if (belong[i] == belong[i ^ 1])
+		REP (i, n) if (com[i] == com[i ^ 1])
 			return false;
 		return true;
 	}
-
-	//k-th short path
-	void mpspush(priority_queue<state>& que, int dis, int e, type A[]) {
-		int v = to[e];
-		if (A[v] != inf) que.push(state(dis + cost[e] + A[v], e, v));
-	}
-	int mps(graphics& rev, int s, int t, type ans[], int k) { //return path count
-		static type A[N];
-		static int unused[N];
-		rev.init(n);
-		REP (u, n) EDGE(u, v, e) rev.add1(v, u, cost[e]);
-		rev.dijkstra(t, A, unused);
-
-		static state de[N];
-		REP (u, n) {
-			int m = 0; EDGE(u, v, e) de[m++] = state(cost[e] + A[v], e, u);
-			sort(de, de + m); head[u] = nil;
-			REP (i, m) { int e = de[i].p; next[e] = head[u]; head[u] = e; }
-		}
-
-		priority_queue<state> que;
-		// if (s == t) ans[m++] = 0;
-		if (head[s] != nil) mpspush(que, 0, head[s], A);
-		int m = 0; while(m < k && !que.empty()) {
-			state cur = que.top(); que.pop();
-			ans[m++] = cur.dis; int e = cur.p, v = cur.u;
-			type dis = cur.dis - cost[e] - A[v];
-			do {
-				if (next[e] != nil) mpspush(que, dis, next[e], A);
-				dis += cost[e]; v = to[e]; e = head[v];
-			} while(v != t);
-			if (e != nil) mpspush(que, dis, e, A);
-		}
-		return m;
-	}
-
-	type nst(int s) { //next spinning tree
-		static int dp[1111][1111], que[1111];
-		REP (u, n) REP (v, n) dp[u][v] = nil;
-		REP (i, n) vis[i] = false;
-		REP (i, n) que[i] = nil;
-		vis[s] = true; type mst = 0;
-		EDGE(s, v, e) if (que[v] == nil || cost[que[v]] > cost[e]) que[v] = e;
-		while(true) {
-			int e = nil;
-			REP (v, n) if (que[v] != nil)
-				if (e == nil || cost[e] > cost[que[v]]) e = que[v];
-			if (e == nil) break;
-
-			int u = to[e], p = to[e ^ 1]; que[u] = nil;
-			if (!vis[u]) {
-				vis[u] = true; mst += cost[e]; dp[u][p] = e;
-				REP (v, n) if (dp[p][v] != nil)
-					dp[u][v] = cost[e] > cost[dp[p][v]] ? e : dp[p][v];
-				REP (v, n) dp[v][u] = dp[u][v];
-				EDGE (u, v, e) if (!vis[v])
-					if (que[v] == nil || cost[que[v]] > cost[e]) que[v] = e;
-			}
-		}
-
-		int edge = nil; type ret = inf;
-		REP (i, n) if (!vis[i]) return ret;
-		REP (u, n) EDGE (u, v, e) {
-			int e0 = dp[u][v]; type cur = mst - cost[e0] + cost[e];
-			if (ret > cur) { ret = cur; edge = e0; }
-		}
-		//remove(edge); ret = prim();
-		return ret;
-	}
-
 	//vis: 1=delete 2=pick
 	bool do2sat(graphics& rtopo, int ans[]) { //no test
-		static int mp[N], ith[N];
+		static int ith[N];
 		if (!has2sat()) return false;
-		topology(rtopo, mp, true);
+		tarjan();
+		rtopo.init(nc);
+		REP (u, n) EDGE(u, v, e)
+			rtopo.add1(com[u], com[v], cost[e]);
 		rtopo.toposort(ith);
 		REP (i, rtopo.n) rtopo.vis[i] = 0;
 		REP (i, n) {
-			int u = mp[ith[i]];
-			int r = mp[ith[i] ^ 1];
+			int u = com[ith[i]];
+			int r = com[ith[i] ^ 1];
 			if (rtopo.vis[u]) continue;
 
 			vis[u] = 2;
@@ -255,15 +118,15 @@ struct graphics
 			}
 		}
 		int m = 0;
-		REP (i, n) if (rtopo.vis[belong[i]] == 2) ans[m++] = i;
+		REP (i, n) if (rtopo.vis[com[i]] == 2) ans[m++] = i;
 		//assert(2 * m == n);
 		return true;
 	}
 
-	type flow[N], cap[N]; //edge
-	void addf(int u, int v, int c, int cost = 0) {
-		int e = add1(u, v, cost); flow[e] = 0; cap[e] = c;
-			e = add1(v, u, cost); flow[e] = 0; cap[e] = 0;
+	int flow[N], cap[N]; //edge
+	void addf(int u, int v, int c, type cost = 0) {
+		int e = add1(u, v,  cost); flow[e] = 0; cap[e] = c;
+			e = add1(v, u, -cost); flow[e] = 0; cap[e] = 0;
 	}
 	int que[N], layer[N];
 	bool dinicbfs(int s, int t) {
@@ -280,7 +143,7 @@ struct graphics
 		return layer[t] != -1;
 	}
 	int cur[N];
-	type dinicdfs(int u, int t, type maxf) {
+	type dinicdfs(int u, int t, int maxf) {
 		if (u == t) return maxf;
 		int ret = 0;
 		for (int& e = cur[u]; e != nil; e = next[e]) {
@@ -297,9 +160,59 @@ struct graphics
 	type dinic(int s, int t) {
 		int ret = 0;
 		while (dinicbfs(s, t))
-			ret += dinicdfs(s, t, 0x7FFFFFFF);
+			ret += dinicdfs(s, t, inf);
 		return ret;
 	}
+
+	// return false if has negative loop
+	bool spfa(int s, type dis[], int edge[]) {
+		static int cnt[N];
+		static bool in[N];
+		REP (i, n) cnt[i] = 0;
+		REP (i, n) in[i] = false;
+		REP (i, n) dis[i] = inf;
+		REP (i, n) edge[i] = nil;
+		dis[s] = 0;
+		edge[s] = nil;
+		queue<int> que;
+		que.push(s); in[s] = true;
+		while (!que.empty()) {
+			int u = que.front();
+			que.pop(); in[u] = false;
+			if (++cnt[u] > n) return false;
+			EDGE (u, v, e) if (flow[e] < cap[e]) {
+				if (dis[v] > dis[u] + cost[e]) { //dis[u] + cost[e] + eps
+					dis[v] = dis[u] + cost[e];
+					edge[v] = e;
+					if (!in[v]) {
+						in[v] = true; que.push(v);
+					}
+				}
+			}
+		}
+		return true;
+	}
+	type mincost_maxflow(int s, int t) {
+		static type dis[N];
+		static int edge[N];
+		int maxf = 0;
+		while (true) {
+			if (!spfa(s, dis, edge)) return 0;
+			if (edge[t] == nil) break;
+			int f = INT_MAX;
+			for (int u = t; edge[u] != nil; u = to[edge[u] ^ 1])
+				f = min(f, cap[edge[u]] - flow[edge[u]]);
+			for (int u = t; edge[u] != nil; u = to[edge[u] ^ 1]) {
+				flow[edge[u]] += f; flow[edge[u] ^ 1] -= f;
+			}
+			maxf += f;
+		}
+		type minc = 0;
+		REP (e, id) if (cap[e] > 0)
+			minc += flow[e] * cost[e];
+		return minc;
+	}
+
 } g;
 
 struct tree
@@ -322,6 +235,7 @@ struct tree
 	void add(int u, int v, type val) { add_(u, v, val); add_(v, u, val); }
 
 	//lca
+	static const int M = 30;
 	int deep[N], dpp[N][M];
 	//u = root, p = nil
 	void initlca(int u, int p) {
@@ -344,6 +258,7 @@ struct tree
 		return u;
 	}
 
+
 	//tree partition solve algorithm
 	int valid[N], size[N], maxsize[N];
 	void sizedfs(int u, int p) {
@@ -360,21 +275,20 @@ struct tree
 		}
 		if (c == -1 || maxsize[u] < maxsize[c]) c = u;
 	}
-	void initpart() { REP (i, n) valid[i] = true; }
-
 
 	int ith[N], L[N], R[N], dfi;
-	void tinit(int u) { dfi = 0; } //init data for empty tree
 	void tdfs(int u, int p, int64 d) {
 		ith[dfi] = u; L[u] = dfi++;
 		EDGE(u, v, e) if (valid[v] && v != p) tdfs(v, u, d);
 		R[u] = dfi;
 	}
+	//u is the root of part tree, i is the dfi of node
+	void tinit(int u) { dfi = 0; } //init data for empty tree, may add 0
 	void tquery(int u, int i) { } //update ans
 	void tinsert(int u, int i) { }
 	void tremove(int u, int i) { }
-	void partition(int t) {
-		//init_part();
+	void initpartition() { REP (i, n) valid[i] = true; }
+	void partition(int t) { //initpartition();
 		int u = t; sizedfs(t, -1); centerdfs(t, -1, 0, u);
 		valid[u] = false;
 		EDGE (u, v, e) if (valid[v]) partition(v);
@@ -382,12 +296,12 @@ struct tree
 
 		//solve for path pass u
 		tinit(u); tdfs(u, -1, 1);
-		tquery(u, L[u]); tinsert(u, L[u]);
+		//tquery(u, L[u]); tinsert(u, L[u]); solve for node
 		EDGE(u, v, e) if (valid[v]) {
 			FOR(i, L[v], R[v]) tquery (u, i);
 			FOR(i, L[v], R[v]) tinsert(u, i);
 		}
-		FOR (i, L[u], R[u]) tremove(u, i);
+		FOR (i, L[u] + 1, R[u]) tremove(u, i);
 	}
 
 

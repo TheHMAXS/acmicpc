@@ -1,13 +1,24 @@
-#include <algorithm>
-using namespace std;
-#define REP(i, n) for (int i = 0, _= (n); i < _; ++i)
-#define DWN(i, n) for (int i = (n) - 1; i >= 0; --i)
-#define FOR(i, l, r) for (int i = (l), _ = (r); i < _; ++i)
-#define EDGE(u, v, e) for (int e = head[u], v; e != nil && (v = to[e], true); e = next[e])
-const int nil = -1;
-const int N = 1111111;
-typedef int type;
+#include "template.h"
 
+const int nil = -1;
+struct hashtable {
+	static const int n = 10000007;
+	typedef int node;
+	int head[n]; int next[n];
+	node key[n]; type val[n];
+	int id = 0;
+	void init() { id = 0; REP (i, n) head[i] = nil; }
+	type& operator[](node x) {
+		int l = x % n, i = head[l];
+		while (i != nil && key[i] != x) i = next[i];
+		if (i == nil) {
+			next[id] = head[l]; head[l] = id;
+			key[id] = x; val[id] = 1e9;
+			i = id++;
+		}
+		return val[i];
+	}
+};
 
 //copy: for functional data structure
 //init: should be call for each test case
@@ -27,69 +38,6 @@ typedef int type;
 //t is a tree, and may be changed by reference
 //the old tree will be invalid if copy() is not enable
 
-namespace que // no test
-{
-	template<class T> struct queue {
-		T val[N]; int l, r;
-		queue(): l(0), r(0) {}
-		void init() { l = r = 0; }
-		void push(T x) { val[r++] = x; }
-		void pop() { l++; if (l == r) l = r = 0; }
-		bool empty() { return l == r; }
-		T& front() { return val[l]; }
-		T& back() { return val[r - 1]; }
-	};
-	template<class T> struct prim { //or Dijkstra
-		T val[N]; bool has[N], vis[N]; int n, cur;
-		prim(int n) { init(n); }
-		void init(int n) {
-			this->n = n; cur = nil;
-			REP (i, n) has[i] = vis[i] = false;
-		}
-		void push(int i, T x) {
-			if (vis[i]) return;
-			if (!has[i] || x < val[i]) val[i] = x; has[i] = true;
-			if (cur == nil || val[i] < val[cur]) cur = i;
-		}
-		void pop() {
-			vis[cur] = true;
-			has[cur] = false; cur = nil;
-			REP (i, n) if (cur == nil || val[i] < val[cur]) cur = i;
-		}
-		bool empty() { return cur == nil; }
-		const T& top() { return val[cur]; }
-	};
-	template<class T> struct minque {
-		int key[N]; T val[N];
-		int l, r, kl, kr;
-		minque(): l(0), r(0), kl(0), kr(0) {}
-		void init() { l = r = kl = kr = 0; }
-		void push(const T x) {
-			while (l < r && x < val[r - 1]) r--;
-			val[r] = x; key[r++] = kr++;
-		}
-		void pop() { kl++; if (key[l] < kl) l++;  }
-		bool empty() { return l == r; }
-		const T& top() { return val[l]; }
-	};
-	const int M = 10;
-	template<class T> struct bfs {
-		vector<T> que[M]; int dis; int cur;
-		bfs(): dis(0), cur(M - 1) {}
-		void init() { dis = 0; cur = M - 1; REP (i, M) que[i].clear(); }
-		void push(int dis, T x) {
-			que[dis % M].push_back(x);
-			if (dis < cur) cur = dis;
-		}
-		void pop() {
-			que[cur % M].pop_back(); dis = cur;
-			while (cur < dis + M && que[cur % M].empty()) cur++;
-		}
-		bool empty() { return que[cur % M].empty(); }
-		const T& top() { return que[cur % M].back(); }
-	};
-}
-
 struct rmq
 {
 	type st[20][N];
@@ -100,7 +48,7 @@ struct rmq
 		REP (lg, 19) REP (i, n) {
 			int len = 1 << lg;
 			st[lg + 1][i] = st[lg][i];
-			if (i + len < n  &&  st[lg][i + len] < st[lg][i])
+			if (i + len < n && st[lg][i + len] < st[lg][i])
 			     st[lg + 1][i] = st[lg][i + len];
 		}
 	}
@@ -128,6 +76,30 @@ struct merge_set
 		P[b] = a; C[a] += C[b]; C[b] = 0;
 		return a;
 	}
+};
+
+struct merge_tree {
+    int P[N], val[N];
+    void init(int n) {
+        REP (i, n) P[i] = i, val[i] = 0;
+    }
+    int stack[N], top;
+    int find(int i) {
+        while (P[P[i]] != P[i]) {
+            stack[top++] = i;
+            i = P[i];
+        }
+        while (top > 0) {
+            int j = stack[--top];
+            val[j] += val[P[j]];
+            P[j] = P[i];
+        }
+        return P[i];
+    }
+    int get(int i) {
+        if (find(i) == i) return val[i];
+        return val[i] + val[P[i]];
+    }
 };
 
 //left_heap
@@ -163,10 +135,9 @@ struct merge_heap
 //tree_array [1, n]
 struct tree_array
 {
-	type S[N], n;
-	void clear(int n) {
-		this->n = n;
-		REP (i, n) S[i] = type();
+	type S[N]; int n;
+	void init(int n) {
+		this->n = n; RE1 (i, n) S[i] = type();
 	}
 	void add(int i, type a) {
 		for (int x = i; x <= n; x += x & (-x)) S[x] += a;
@@ -175,6 +146,17 @@ struct tree_array
 		type a = type();
 		for (int x = i; x >  0; x -= x & (-x)) a += S[x];
 		return a;
+	}
+	//return [0, n] of sum[1, n]
+	//upper_bound - 1
+	int last(type value) {
+		int l = 0; type sum = type();
+		for (int k = 1 << 20; k >= 1; k >>= 1) {
+			if (l + k <= n && sum + S[l + k] <= value) {
+				sum += S[l + k]; l += k;
+			}
+		}
+		return l;
 	}
 	type sum(int l, int r)  { return sum(r) - sum(l - 1); }
 	type get(int i)         { return sum(i) - sum(i - 1); }
@@ -217,7 +199,7 @@ struct add_t {
 };
 struct sum_t {
 	int len, sum, max;
-	sum_t(): len(0), sum(0), max(-inf) {}
+	sum_t(): len(0), sum(0), max(INT_MIN) {}
 	sum_t(int len, type val = 0): len(len), sum(len * val), max(val) {}
 	void operator+=(add_t a) { sum += a.add * len; max += a.add; }
 	friend sum_t operator+(sum_t a, sum_t b) {
@@ -263,27 +245,30 @@ struct zkw_tree
 	//[1, n]
 	void init(int n, type val[]) {
 		int lg = 0; while (1 << lg < n + 2) lg++;
-		this->n = n = 1 << lg;
-		REP (i, n) if (val) sum[i + n] = sum_t(1, val[i]);
+		int m = this->n = 1 << lg;
+		if (val) RE1 (i, n) sum[i + m] = sum_t(1, val[i]);
 		DWN (i, n) up(i);
 	}
+	//[l, r]
 	void update(int l, int r, add_t a) {
 		l += n; r += n; l--; r++;
-		while (l ^ r != 1) {
-			if (l & 1 == 0) { sum[l + 1] += a; add[l + 1] += a; }
-			if (r & 1 == 1) { sum[r - 1] += a; add[r - 1] += a; }
-			up(l <<= 1); up(r <<= 1);
+		while ((l ^ r) != 1) {
+			if ((l & 1) == 0) { sum[l + 1] += a; add[l + 1] += a; }
+			if ((r & 1) == 1) { sum[r - 1] += a; add[r - 1] += a; }
+			up(l >>= 1); up(r >>= 1);
 		}
-		while (l > 1) up(l <<= 1);
+		while (l > 1) up(l >>= 1);
 	}
 	sum_t query(int l, int r) {
 		l += n; r += n; l--; r++; sum_t sl, sr;
-		while (l ^ r != 1) {
-			if (l & 1 == 0) sl = sl + sum[l + 1];
-			if (r & 1 == 1) sr = sum[r - 1] + sr;
-			sl += add[l <<= 1]; sr += add[r <<= 1];
+		while ((l ^ r) != 1) {
+			if ((l & 1) == 0) sl = sl + sum[l + 1];
+			if ((r & 1) == 1) sr = sum[r - 1] + sr;
+			sl += add[l >>= 1]; sr += add[r >>= 1];
 		}
-		sl += sr; while (l > 1) sl += add[l <<= 1]; return sl;
+		sum_t s = sl + sr;
+		while (l > 1) s += add[l >>= 1];
+		return s;
 	}
 };
 
@@ -306,7 +291,7 @@ struct segment_tree
 		int len = X[i].sum.len, m = len >> 1;
 		if (Ls(i) == nil) Ls(i) = make(m);
 		if (Rs(i) == nil) Rs(i) = make(len - m);
-		if (!X[i].add.empty()){
+		if (!X[i].add.empty()) {
 			copy(Ls(i)); X[Ls(i)].update(X[i].add);
 			copy(Rs(i)); X[Rs(i)].update(X[i].add);
 			X[i].add = add_t();
@@ -402,7 +387,7 @@ struct splay_tree
 {
 	struct node {
 		int p; int sub[2]; add_t add; sum_t sum; sum_t val;
-		node(type val = inf):
+		node(int val = INT_MAX):
 			add(), sum(1, val), val(1, val) {
 			p = sub[0] = sub[1] = nil;
 		}
@@ -522,5 +507,106 @@ struct splay_tree
 	void elink(int u, int v, int e) { link(U[e] = u, e); link(e, V[e] = v); }
 	void ecut (int e) { setroot(e); cut(U[e]); cut(V[e]); }
 } splay;
+
+const int K = 2;
+struct point {
+	type val[K]; int c;
+	type& operator[](int i) { return val[i]; }
+	friend bool operator<(point a, point b) { return false; }
+	friend type distance(point a, point b) {
+		type ret = 0;
+		REP (i, K) ret += (a[i] - b[i]) * (a[i] - b[i]);
+		return ret;
+	}
+	friend type distance(point a, point b, int k) {
+		return (a[k] - b[k]) * (a[k] - b[k]);
+	}
+};
+struct disp {
+	type dis; point p;
+	disp(type dis, point p): dis(dis), p(p) {}
+	friend bool operator<(disp a, disp b) {
+		return a.dis < b.dis;
+	}
+	disp(): dis(0) {}
+};
+struct kdtree {
+	struct cmp {
+		int k; cmp(int k): k(k) {}
+		bool operator()(point a, point b) {
+			return a[k] < b[k];
+		}
+	};
+	struct node {
+		int sub[2]; point val; int div;
+		node(point val, int div):
+			val(val), div(div) {
+			sub[0] = sub[1] = nil;
+		}
+		node(): div(0) {}
+	} X[N]; int id;
+	int& Ls(int i) { return X[i].sub[0]; }
+	int& Rs(int i) { return X[i].sub[1]; }
+	void init() { id = 0; }
+	int make(point val, int k) { X[id] = node(val, k); return id++; }
+	int divise(point P[], int n) {
+		int ret = 0; double maxs2 = 0.0;
+		REP (k, K) {
+			double avg = 0, s2;
+			REP (i, n) avg += P[i][k]; avg /= n;
+			REP (i, n) s2 += (P[i][k] - avg) * (P[i][k] - avg);
+			if (s2 > maxs2) { ret = k; maxs2 = s2; }
+		}
+		return ret;
+	}
+	int divise0(point P[], int n) {
+		int ret = 0; type maxd = 0;
+		REP (k, K) {
+			int maxk = P[0][k], mink = -P[0][k];
+			REP (i, n) {
+				if (P[i][k] > maxk) maxk = P[i][k];
+				if (P[i][k] < mink) mink = P[i][k];
+			}
+			if (maxk - mink > maxd) { ret = k; maxd = maxk - mink; }
+		}
+		return ret;
+	}
+	int make(point P[], int n, int k) {
+		if (n == 0) return nil;
+		int m = n / 2;
+		std::nth_element(P, P + m, P + n, cmp(k));
+		int ret = make(P[m], k);
+		Ls(ret) = make(P, m, (k + 1) % K);
+ 		Rs(ret) = make(P + m + 1, n - m - 1, (k + 1) % K);
+ 		return ret;
+	}
+
+	//no need eps for double
+	//ans is INPUT FOR PRUNING
+	void near(int t, point p, disp& ans) {
+		if (t == nil) return;
+		disp cur(distance(p, X[t].val), X[t].val);
+		if (cur.dis < ans.dis) ans = cur;
+
+		int k = X[t].div, d = X[t].val[k] <= p[k];
+		near(X[t].sub[d], p, ans);
+		if (distance(p, X[t].val, k) <= ans.dis)
+			near(X[t].sub[d^1], p, ans);
+	}
+	void nth_near(int t, point p, int n, disp ans[]) {
+		if (t == nil) return;
+		disp cur(distance(p, X[t].val), X[t].val);
+		if (cur.dis < ans[0].dis) {
+			pop_heap (ans, ans + n);
+			ans[n - 1] = cur;
+			push_heap(ans, ans + n);
+		}
+
+		int k = X[t].div, d = X[t].val[k] <= p[k];
+		nth_near(X[t].sub[d], p, n, ans);
+		if (distance(p, X[t].val, k) <= ans[0].dis)
+			nth_near(X[t].sub[d^1], p, n, ans);
+	}
+} kdtree;
 
 

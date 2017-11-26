@@ -1,28 +1,63 @@
-#include <complex>
-using namespace std;
-typedef long long int64;
-typedef complex<double> comp;
+#include "template.h"
 
-const int N = 1111111;
-#define REP(i, n) for (int i = 0, _= (n); i < _; ++i)
-#define FOR(i, l, r) for (int i = (l), _ = (r); i < _; ++i)
-#define DWN(i, n) for (int i = (n) - 1; i >= 0; --i)
-
-//lower_bound(val) in [l, r)
-template<class T, class Int, class U>
-int lower_bound(T f, Int l, Int r, U val) {
+//return [l, r] of [l, r)
+template<class F, class T>
+T first(F f, T l, T r) {
 	while (l < r) {
-		Int m = (l + r) / 2;
-		if (f(m) < val) l = m + 1;
-		else r = m;
+		T m = l + (r - l) / 2;
+		f(m) ? l = m + 1 : r = m;
+	}
+	return l;
+}
+//return [l, r] of (l, r]
+template<class F, class T>
+T last(F f, T l, T r) {
+	while (l < r) {
+		T m = l + (r - l + 1) / 2;
+		f(m) ? l = m : r = m - 1;
 	}
 	return l;
 }
 
-//lower_bound(val + 1)
-template<class T, class Int, class U>
-int upper_bound(T f, Int l, Int r, U val) {
-	return lower_bound(f, l, r, ++val);
+template<class F, class T>
+T first2(F f, T l, T r) {
+	for (T n = 1 << 20; n > 0; n >>= 1) {
+		if (l + n <= r && !f(l + n - 1)) l += n;
+	}
+	return l;
+}
+
+template<class F, class T>
+T min_position(F f, T l, T r, T eps) {
+	T div = (3 - sqrt(5)) / 2;
+	T w = div * (r - l);
+	T m1 = l + w, m2 = r - w;
+	T f1  = f(m1), f2 = f(m2);
+	while (eps < r - l) {
+		if (f2 < f1) {
+			l = m1; m1 = m2; f1 = f2;
+			m2 = l + r - m1; f2 = f(m2);
+		} else {
+			r = m2; m2 = m1; f2 = f1;
+			m1 = l + r - m2; f1 = f(m1);
+		}
+	}
+	return (l + r) / 2;
+}
+
+template<class F, class T>
+T simpson(F f, T d, T l, T m, T r, T eps, T fl, T fm, T fr, T P) {
+	T lm = (l + m) / 2, flm = f(lm);
+	T rm = (r + m) / 2, frm = f(rm);
+	T L = (fl + 4 * flm + fm) * (m - l) / 6;
+	T R = (fr + 4 * frm + fm) * (r - m) / 6;
+	if (r - l < d && abs(L + R - P) < eps) return L + R;
+	return simpson(f, d, l, lm, m, eps / 2, fl, flm, fm, L) +
+	       simpson(f, d, m, rm, r, eps / 2, fm, frm, fr, R);
+}
+template<class F, class T>
+T simpson(F f, T d, T l, T r, T eps) {
+	return simpson(f, d, l, (l + r) / 2, r, eps, f(l), f((l + r) / 2), f(r), -1e30);
 }
 
 void add(int64& a, int64 b, int64 mod) {
@@ -30,54 +65,26 @@ void add(int64& a, int64 b, int64 mod) {
 	if (a >= mod) a -= mod;
 	if (a < 0)	a += mod;
 }
-struct vec {
-	static const int n = 2;
-	int64 val[n];
-	vec(int x = 0) { REP (i, n) val[i] = x; }
-};
-struct matrix {
-	static const int n = 2;
-	int64 val[n][n];
-	matrix(int x = 0) {
-		REP (i, n) REP (j, n) val[i][j] = 0;
-		REP (i, n) val[i][i] = x;
-	}
-	void operator+=(const matrix& A) {
-		REP (i, n) REP (j, n)
-			add(val[i][j], A.val[i][j], mod);
-	}
-	friend matrix operator*(const matrix& A, const matrix& B) {
-		matrix R;
-		REP (i, n) REP (j, n) REP (k, n)
-			add(R.val[i][j], A.val[i][k] * B.val[k][j] % mod, mod);
-		return R;
-	}
-	friend vec operator*(const matrix A, const vec& B) {
-		vec R;
-		REP (i, n) REP (k, n)
-			add(R.val[i], A.val[i][k] * B.val[k] % mod, mod);
-		return R;
-	}
-};
-matrix sumpow(matrix a, int64 b) {
-	matrix x = 1, sa = 1, sx = 0;
-	for (; b != 0; b >>= 1, sa += a * sa, a = a * a)
-		if (b & 1) sx += x * sa, x = x * a;
-	return sx;
-}
-matrix pow(matrix a, int64 b) {
-	matrix x = 1;
+template<class T> T pow(T a, int64 b) {
+	T r = 1;
 	for (; b != 0; b >>= 1, a = a * a)
-		if (b & 1) x = x * a;
-	return x;
+		if (b & 1) r = r * a;
+	return r;
+}
+int64 pow(int64 a, int64 b, int64 mod) {
+	int64 r = 1;
+	for (; b != 0; b >>= 1, a = a * a % mod)
+		if (b & 1) r = r * a % mod;
+	return r;
 }
 
 template<class T> T gcd(T a, T b) {
-	for (T r; b != 0; r = a % b, a = b, b = r);
+	while (b != 0) {
+		T r = a % b; a = b; b = r;
+	}
 	return a;
 }
-
-template<class T> T gcd(T a, T b, T &x, T &y) {
+template<class T> T gcd(T a, T b, T& x, T& y) {
 	T xa = 1, xb = 0;
 	T ya = 0, yb = 1;
 	while (b != 0) {
@@ -85,21 +92,17 @@ template<class T> T gcd(T a, T b, T &x, T &y) {
 		y = ya - a / b * yb; ya = yb; yb = y;
 		T r = a % b; a = b; b = r;
 	}
-	x = xa; y = ya; return a;
+	x = xa;
+	y = ya;
+	return a;
+}
+template<class T> T rev(T a, T mod) {
+	T x, y;
+	gcd(a, mod, x, y);
+	return (x + mod) % mod;
+//  return pow(a, mod - 2, mod);
 }
 
-int64 pow(int64 a, int64 b, int64 mod) {
-	int64 x = 1;
-	for (; b != 0; b >>= 1, a = a * a % mod)
-		if (b & 1) x = x * a % mod;
-	return x;
-}
-int64 sumpow(int64 a, int64 b, int64 mod) {
-	int64 x = 1, sa = 1, sx = 0;
-	for (; b != 0; b >>= 1, add(sa, a * sa % mod, mod), a = a * a % mod)
-		if (b & 1) add(sx, x * sa % mod, mod), x = x * a % mod;
-	return sx;
-}
 //a ^ b == a ^ (b % eular(c) + eular(c)) (mod c)
 int eular(int n){
 	int ret = 1;
@@ -111,55 +114,30 @@ int eular(int n){
 	return ret;
 }
 
-int64 rev(int64 a, int64 mod) {
-	int64 x, y; gcd(a, mod, x, y);
-	while (x < 0) x += mod;
-	while (x >= mod) x -= mod;
-	return x;
-//  return pow(a, mod - 2, mod);
-}
 int64 china(int64 r[], int64 mod[], int n) {
 	int64 x = 0, m = 1;
 	REP (i, n) m *= mod[i];
 	REP (i, n) {
 		int64 mi = m / mod[i];
-		x += r[i] * rev(mi, mod[i]) * mi;
+		x = (x + r[i] * rev(mi, mod[i]) * mi) % m;
 	}
 	return x % m;
 }
 
-template<int n, int m>
-void calC(int64 (&C)[n][m], int64 mod) {
-	REP (j, m) C[0][j] = 0;
-	REP (i, n) C[i][0] = 1;
-	FOR (i, 1, n) FOR (j, 1, m) C[i][j] = (C[i - 1][j] + C[i - 1][j - 1]) % mod;
-}
-int64 calCN(int64 n, int64 m, int64 mod) {
-	if (m > n) return 0;
-	int64 ret = 0;
-	REP (i, n + 1) { //C(i, m)
-		if (i == m) ret = 1;
-		if (i > m) ret = ret * i % mod * rev(i - m, mod) % mod;
-	}
-	return ret;
-}
-int64 calCM(int64 n, int64 m, int64 mod) {
-	if (m > n) return 0;
-	int64 ret = 1;
-	REP (i, m + 1) {
-		if (i > 0) ret = ret * (n - i + 1) % mod * rev(i, mod) % mod; //C(n, i)
-	}
-	return ret;
-}
-
 namespace fft
 {
-	//with chain() can solve int64
+	const double eps = 1e-9;
+	const double pi = acos(-1.0);
+	typedef std::complex<double> comp;
+	//with china() can solve int64
 	void ntt(int64 y[4*N], int n, int on, int64 mod = (479 << 21) + 1) {
 		static const int64 unit = 3;
-		for (int i = 1, j = n >> 1, k; i < n - 1; i++, j += k) {
+		int j = n >> 1;
+		FOR (i, 1, n - 1) {
 			if (i < j) swap(y[i], y[j]);
-			for (k = n >> 1; j >= k; k >>= 1) j -= k;
+			int k = n >> 1;
+			while (j & k) k >>= 1;
+			j = (j & (k - 1)) | k;
 		}
 		for(int h = 1; h < n; h <<= 1) {
 			int64 wn = pow(unit, (mod - 1) / h / 2, mod);
@@ -169,26 +147,35 @@ namespace fft
 					int64 u = y[k] % mod;
 					int64 t = w * y[k + h] % mod;
 					y[k] = y[k + h] = u;
-					add(y[k], t, mod); add(y[k + h], -t, mod);
+					add(y[k], t, mod);
+					add(y[k + h], -t, mod);
 					w = w * wn % mod;
 				}
 			}
 		}
-		if(on == -1) REP (i, n) y[i] = y[i] * rev(n, mod) % mod;
+		if(on == -1) REP (i, n) {
+			y[i] = y[i] * rev((int64)n, mod) % mod;
+		}
 	}
+
 	//on 1 -> DFT -1 -> IDFT
 	//n must be 2^k, DFT on = 1, IDFT on = -1
 	void fft(comp y[4*N], int n, int on) {
-		for (int i = 1, j = n >> 1, k; i < n - 1; i++, j += k) {
+		int j = n >> 1;
+		FOR (i, 1, n - 1) {
 			if (i < j) swap(y[i], y[j]);
-			for (k = n >> 1; j >= k; k >>= 1) j -= k;
+			int k = n >> 1;
+			while (j & k) k >>= 1;
+			j = (j & (k - 1)) | k;
 		}
 		for(int h = 1; h < n; h <<= 1) {
-			comp wn(cos(-on * pi / h), sin(-on * pi / h));
+			double r = -on * pi / h;
+			comp wn(cos(r), sin(r));
 			for (int j = 0; j < n; j += h << 1) {
 				comp w = 1.0;
 				FOR (k, j, j + h) {
-					comp u = y[k], t = w * y[k + h];
+					comp u = y[k];
+					comp t = w * y[k + h];
 					y[k]     = u + t;
 					y[k + h] = u - t;
 					w *= wn;
@@ -199,60 +186,19 @@ namespace fft
 	}
 
 	//x^0 + x^1 + x^2 + ... + x^(n - 1) n1 > 0, n2 > 0
-	comp y1[4*N], y2[4*N];
-	template<class T>
-	void mul(T x[4*N], T x1[4*N], T x2[4*N], int n) {
-		REP (i, n) y1[i] = double(x1[i]);
-		REP (i, n) y2[i] = double(x2[i]);
-		fft(y1, n, 1); fft(y2, n, 1);
-		REP (i, n) y1[i] *= y2[i];
-		fft(y1, n, -1);
-		REP (i, n) x[i] = T(y1[i].real() + 0.5);
-	}
 	template<class T>
 	int mul(T x[4*N], T x1[4*N], T x2[4*N], int n1, int n2) {
-		int n = 1; while (n < 2*n1 || n < 2*n2) n <<= 1;
+		static comp y1[4*N], y2[4*N];
+		int n = 1;
+		while (n < 2*n1 || n < 2*n2) n <<= 1;
 		FOR (i, n1, n) x1[i] = 0;
 		FOR (i, n2, n) x2[i] = 0;
-		mul(x, x1, x2, n);
+		REP (i, n) y1[i] = double(x1[i]); fft(y1, n, 1);
+		REP (i, n) y2[i] = double(x2[i]); fft(y2, n, 1);
+		REP (i, n) y1[i] *= y2[i];        fft(y1, n, -1);
+		REP (i, n) x[i] = T(y1[i].real() + 0.5);
 		while (n > 1 && x[n - 1] == 0) n--;
 		return n;
-	}
-	int64 x1[4*N], x2[4*N], x[4*N];
-	void mul(char s[2*N], char s1[N], char s2[N]) {
-		int n1 = strlen(s1), n2 = strlen(s2);
-		reverse(s1, s1 + n1); reverse(s2, s2 + n2);
-		REP (i, n1) x1[i] = double(s1[i] - '0');
-		REP (i, n2) x2[i] = double(s2[i] - '0');
-		int n = mul(x, x1, x2, n1, n2);
-		REP (i, n) { x[i + 1] += x[i] / 10; x[i] %= 10; }
-		while (x[n] > 0) { x[n + 1] += x[n] / 10; x[n] %= 10; n++; }
-		DWN (i, n) s[n - i - 1] = x[i] + '0'; s[n] = '\0';
-	}
-};
-
-namespace polya //no test
-{
-	int loops(int p[], int n) { //count loops of permutation
-		static bool vis[N];
-		int ret = 0;
-		REP (i, n) vis[i] = false;
-		REP (i, n) if (!vis[i]) {
-			ret++; int j = i;
-			do { vis[j] = true; j = p[j]; } while(j != i);
-		}
-		return ret;
-	}
-	int64 burnside(int64 C[], int n) {//C: loops
-		int64 ret = 0;
-		REP (i, n) ret += C[i];
-		return ret / n;
-	}
-	int64 polya(int64 m, int64 C[], int n, int64 mod) {//m: color count
-		int64 ret = 0;
-		REP (i, n) add(ret, pow(m, C[i], mod), mod);
-		ret = ret * rev(ret, mod) % mod;
-		return ret;
 	}
 };
 
@@ -260,7 +206,7 @@ namespace polya //no test
 struct karatsuba
 {
 	typedef int64 type;
-	type poor[N]; int id = 0;
+	type poor[N * 4]; int id = 0;
 	void add(type x[], type y[], int n) { REP (i, n) x[i] += y[i]; }
 	void sub(type x[], type y[], int n) { REP (i, n) x[i] -= y[i]; }
 	//n must be 2^n
@@ -270,12 +216,18 @@ struct karatsuba
 			REP (i, n) REP (j, n) r[i + j] += x[i] * y[j];
 		} else {
 			int n2 = n / 2;
-			mul(r, x, y, n2); mul(r + n, x + n2, y + n2, n2);
+			mul(r, x, y, n2);
+			mul(r + n, x + n2, y + n2, n2);
 			type* xy = poor + id; id += n;
-			sub(x, x + n2, n2); sub(y + n2, y, n2);
+
+			sub(x, x + n2, n2);
+			sub(y + n2, y, n2);
 			mul(xy, x, y + n2, n2);
-			add(x, x + n2, n2); add(y + n2, y, n2);
-			add(xy, r, n); add(xy, r + n, n);
+			add(x, x + n2, n2);
+			add(y + n2, y, n2);
+
+			add(xy, r, n);
+			add(xy, r + n, n);
 			add(r + n2, xy, n);
 			id -= n;
 		}
@@ -348,68 +300,13 @@ struct Dlx
 			}
 		}
 	}
-	int solve(int ans[], int max = inf - 1) { //return max + 1 if impossible
+	int solve(int ans[], int max = INT_MAX - 1) { //return max + 1 if impossible
 		nbest = max + 1; int nans = 0; dfs(ans, nans);
 		nans = nbest; REP (i, nans) ans[i] = best[i];
 		return nans;
 	}
 #undef EACH
 } dlx;
-
-const int PN = 7 + 1, PM = 2 * 3 * 5 * 7 * 11 * 13 * 17 + 1, M = 4111111;
-struct prime
-{
-	int prime[M], n, count[M + 1], m; bool is[M + 1]; //count primes <= M
-	void init(int m) {
-		this->m = ++m; REP (i, m) is[i] = true;
-		is[0] = is[1] = false;
-		for (int i = 2; i * i < m; i++) if (is[i])
-			for (int j = i * i; j < m; j += i) is[j] = false;
-		n = 0; REP (i, m) if (is[i]) prime[n++] = i;
-		count[0] = 0; FOR (i, 1, m) count[i] = count[i - 1] + is[i];
-	}
-
-	//lehmer O(n^(2/3))
-	int64 dp[PM][PN], pmul[PN];
-	void initphi() {
-		init(M); REP (i, PM) dp[i][0] = i;
-		FOR (m, 1, PM) FOR (n, 1, PN)
-			dp[m][n] = dp[m][n - 1] - dp[m / prime[n - 1]][n - 1];
-		pmul[0] = 1; FOR (n, 1, PN) pmul[n] = pmul[n - 1] * prime[n - 1];
-	}
-	int64 phi(int64 m, int n) { // m < M * M
-		if (n == 0) return m;
-		if (m < M && m <= prime[n - 1] * prime[n - 1]) return count[m] - n + 1;
-		if (pmul[n] < PM && n < PN)
-			return dp[m % pmul[n]][n] + (m / pmul[n]) * dp[pmul[n]][n];
-		return phi(m, n - 1) - phi(m / prime[n - 1], n - 1);
-	}
-	int64 pi(int64 m) { //count primes <= m, m < M * M
-		//initphi();
-		if (m < M) return count[m];
-		int m2 = sqrt(m + 0.5), m3 = cbrt(m + 0.5), a = pi(m3);
-		int64 ret = phi(m, a) + a - 1;
-		for (int i = a; prime[i] <= m2; i++)
-			ret = ret - pi(m / prime[i]) + pi(prime[i]) - 1;
-		return ret;
-	}
-
-	//lehmer O(n^(3/4))
-	static int64 pi2(int64 n) { //count primes <= n, n < M * M
-		static int64 lehmer[M], phi[M]; //[sqrt(n)]
-		int64 m; for(m = 1; m * m <= n; m++) lehmer[m] = n / m - 1;
-	    for (int64 i = 1; i <= m; i++) phi[i] = i - 1;
-	    for (int64 i = 2; i <= m; i++) {
-	        if (phi[i] == phi[i - 1]) continue;
-	        for (int64 j = 1; j <= min(m - 1, n / i / i); j++) {
-	            if(i * j < m) lehmer[j] -= lehmer[i * j] - phi[i - 1];
-	            else lehmer[j] -= phi[n / i / j] - phi[i - 1];
-	        }
-	        for(int j = m; j >= i * i; j--) phi[j] -= phi[j / i] - phi[i - 1];
-	    }
-	    return lehmer[1];
-	}
-};
 
 struct gauss {
 	type val[N][N]; int n, m, l;
@@ -435,14 +332,15 @@ struct gauss {
 		}
 		return n;
 	}
-	bool rev() {
+	bool rev() { //no test
 		if (n != m) return false;
 		static int col[N]; if (rank(col) < n) return false;
 		DWN (r, n) REP (i, r) subrow(i, r, r);
 		REP (r, n) FOR (i, n, l) val[r][i] /= val[r][r];
 		REP (r, n) val[r][r] = 1;
+		return true;
 	}
-	int solve(type ans[]) { //-1 impossible, 1 many, 0 one.
+	int solve(type ans[]) { //no test //-1 impossible, 1 many, 0 one.
 		static int col[N]; int r = rank(col);
 		for (int ec = m, i = r - 1; i >= 0; ec = col[i], i--){
 			int c = col[i]; FOR (k, c, ec) ans[k] = 0;
@@ -453,7 +351,8 @@ struct gauss {
 		return r < m ? 1 : 0;
 	}
 };
-struct xorgauss
+
+struct xorgauss //no test
 {
 	bool val[N][N]; int n, m, l;
 	int  maxrow (int r, int c) {
@@ -480,5 +379,90 @@ struct xorgauss
 		}
 		FOR (i, r, n) if (sign(val[i][m]) != 0) return -1;
 		return r < n ? 1 : 0;
+	}
+};
+
+struct prime
+{
+	static const int PN = 7 + 1;
+	static const int PM = 2 * 3 * 5 * 7 * 11 * 13 * 17 + 1;
+	static const int M = 4111111;
+	int prime[M];
+	int count[M + 1]; //count primes <= M
+	bool is[M + 1];
+	void init(int m) {
+		m++;
+		is[0] = is[1] = false;
+		FOR (i, 2, m) is[i] = true;
+		for (int i = 2; i * i < m; i++) if (is[i])
+			for (int j = i * i; j < m; j += i) is[j] = false;
+		int n = 0;
+		count[0] = 0;
+		REP (i, m) if (is[i]) prime[n++] = i;
+		FOR (i, 1, m) count[i] = count[i - 1] + is[i];
+	}
+
+	//lehmer O(n^(2/3))
+	int64 dp[PM][PN], pmul[PN];
+	void initphi() {
+		init(M);
+		REP (i, PM) dp[i][0] = i;
+		FOR (m, 1, PM) FOR (n, 1, PN)
+			dp[m][n] = dp[m][n - 1] - dp[m / prime[n - 1]][n - 1];
+		pmul[0] = 1;
+		FOR (n, 1, PN) pmul[n] = pmul[n - 1] * prime[n - 1];
+	}
+	int64 phi(int64 m, int n) { // m < M * M
+		if (n == 0) return m;
+		if (m < M && m <= prime[n - 1] * prime[n - 1])
+			return count[m] - n + 1;
+		if (pmul[n] < PM && n < PN)
+			return dp[m % pmul[n]][n] + (m / pmul[n]) * dp[pmul[n]][n];
+		return phi(m, n - 1) - phi(m / prime[n - 1], n - 1);
+	}
+	int64 pi(int64 m) { //count primes <= m, m < M * M
+		//initphi();
+		if (m < M) return count[m];
+		int m2 = sqrt(m + 0.5);
+		int m3 = cbrt(m + 0.5);
+		int a = pi(m3);
+		int64 ret = phi(m, a) + a - 1;
+		for (int i = a; prime[i] <= m2; i++)
+			ret = ret - pi(m / prime[i]) + pi(prime[i]) - 1;
+		return ret;
+	}
+} P;
+
+//lehmer O(n^(3/4))
+int64 pi(int64 n) { //n < M * M
+    static int64 dp[M], phi[M];
+    int64 m = sqrt(n - 0.5) + 1;
+    FOR (i, 1, m + 1) dp[i] = n / i - 1;
+    FOR (i, 1, m + 1) phi[i] = i - 1;
+    FOR (i, 2, m + 1) {
+        if (phi[i] == phi[i - 1]) continue;
+        FOR (j, 1, min(m - 1, n / i / i) + 1) {
+            if(1ll * i * j < m) dp[j] -= dp[i * j] - phi[i - 1];
+            else dp[j] -= phi[n / i / j] - phi[i - 1];
+        }
+        for(int j = m; j >= 1ll * i * i; j--) {
+        	phi[j] -= phi[j / i] - phi[i - 1];
+        }
+    }
+    return dp[1];
+}
+
+namespace polya //no test
+{
+	int64 burnside(int64 C[], int n) {//C: loops count of permutation
+		int64 ret = 0;
+		REP (i, n) ret += C[i];
+		return ret / n;
+	}
+	int64 polya(int64 m, int64 C[], int n, int64 mod) {//m: color count
+		int64 ret = 0;
+		REP (i, n) add(ret, pow(m, C[i], mod), mod);
+		ret = ret * rev((int64)n, mod) % mod;
+		return ret;
 	}
 };
